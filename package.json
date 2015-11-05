@@ -1,0 +1,25 @@
+{
+  "name": "silverstripe-event-manager",
+  "version": "1.0.0",
+  "description": "An event management interface for SilverStripe CMS",
+  "main": "./src/main.js",
+  "scripts": {
+    "build": "gulp"
+  },
+  "keywords": [
+    "SilverStripe",
+    "ReactJS"
+  ],
+  "engines": {
+    "node": "^4.0.0"
+  },
+  "devDependencies": {
+    "babelify": "^6.3.0",
+    "browserify": "^12.0.1",
+    "gulp": "^3.9.0",
+    "jquery": "^2.1.4",
+    "react": "^0.13.0",
+    "semver": "^5.0.3",
+    "vinyl-source-stream": "^1.1.0"
+  }
+}
