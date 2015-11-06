@@ -81,8 +81,8 @@ class EventManagerComponent extends React.Component {
 
     constructor(props) {
         super(props);
-		
-		this.state = {};
+        
+        this.state = {};
     }
 
     render() {
@@ -151,11 +151,7 @@ class EventManagerComponent extends React.Component {
     }
 
     componentDidMount() {
-        $.getJSON(this.props.source, (result) => {
-            this.setState({
-                events: result.events
-            });
-        });
+        $.getJSON(this.props.source, this.handleNewEventData.bind(this));
     }
 
     render() {
@@ -175,10 +171,16 @@ class EventManagerComponent extends React.Component {
             </div>
         );
     }
+
+    handleNewEventData(data) {
+        this.setState({
+            events: data.events
+        });
+    }
 }
 
 EventManagerComponent.propTypes = {
-	source: React.PropTypes.string.isRequired
+    source: React.PropTypes.string.isRequired
 }
 
 export default EventManagerComponent;
@@ -239,11 +241,7 @@ class EventManagerComponent extends React.Component {
     }
 
     componentDidMount() {
-        $.getJSON(this.props.source, (result) => {
-            this.setState({
-                events: result.events
-            });
-        })
+        $.getJSON(this.props.source, this.handleNewEventData.bind(this));
     }
 
     render() {
@@ -262,6 +260,12 @@ class EventManagerComponent extends React.Component {
                 {events}
             </div>
         );
+    }
+
+    handleNewEventData(data) {
+        this.setState({
+            events: data.events
+        });
     }
 }
 
