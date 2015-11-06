@@ -13,11 +13,7 @@ class EventManagerComponent extends React.Component {
     }
 
     componentDidMount() {
-        $.getJSON(this.props.source, (result) => {
-            this.setState({
-                events: result.events
-            });
-        })
+        $.getJSON(this.props.source, this.handleNewEventData.bind(this));
     }
 
     render() {
@@ -36,6 +32,12 @@ class EventManagerComponent extends React.Component {
                 {events}
             </div>
         );
+    }
+
+    handleNewEventData(data) {
+        this.setState({
+            events: data.events
+        });
     }
 }
 
