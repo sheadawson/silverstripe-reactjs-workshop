@@ -2,63 +2,59 @@
 
 ## Introduction
 
-Using ReactJS in SilverStripe sounds like fun right? Well it is, but before we dive into the code, let's think about what ReactJS is and why we're using it.
+Using ReactJS in SilverStripe sounds like fun right? Well it is but before we dive into the code, let's think about what ReactJS is, and why we're using it.
 
-According to Facebook (the folks who made it) ReactJS is
+According to Facebook (the folks who made it) ReactJS is:
 
 > A JavaScript library for building user interfaces
 
 Sounds cool. But why not use jQuery, jQuery UI, Bootstrap, and all those other existing tools to build a UI?
 
-One of the nice things about React is that it plays really well existing technologies. So if you have an existing UI built in jQuery UI for example, ReactJS can be used in alongside your existing components, or you can splice it with those components giving them super powers.
+One of the nice things about React is that it plays really well existing technologies. So if you have an existing UI built with jQuery UI for example, ReactJS can be used in alongside your existing components, or you can splice it with those components to give them super powers.
 
-One importantant distinction to make between ReactJS and other libraries you may have used, jQuery for example, is ReactJS components are rendered client-side. So what does that mean exactly?
+One important distinction to make between ReactJS and other libraries, jQuery for example, is ReactJS components are rendered client-side.
 
-Dynamic websites have traditionally used server-side rendering. Where the browser sends a request to the server asking for the content (let's say a webpage) that lives at a specific URL. The server works out what content should be returned passes back a string of HTML representing the page. Your JavaScript kicks in and applies some behaviour to the rendered DOM nodes.
+Dynamic websites traditionally use server-side rendering. Your browser sends a request to a server asking for some content (let's say a webpage). The server works out what content should be returned, generates some HTML, and passes it back to your browser in the response. Your browser renders the HTML, any JavaScript is executed, and applies some behaviour to the rendered DOM nodes.
 
-ReactJS components work a little defferently. Instead of working purly with the HTML returned by the server, ReactJS components work with raw data, generally in the form of a JSON object. ReactJS generates HTML by transforming that data through a series of JavaScript function calls, then applies your custom behaviour to the generated component.
+ReactJS components work a little defferently. Instead of applying behaviour to HTML returned by the server, ReactJS components work with raw data, generally in the form of a JSON object. ReactJS generates HTML by transforming that data through a series of function calls, then applies your custom behaviour to the generated markup.
 
-So going back to the origional question, why not just generate our HTML on the server and use jQuery to apply custom behaviour?
+So going back to the origional question, why not just generate HTML on the server and use jQuery to apply custom behaviour?
 
-There are a number of advantages to dealing with data rather than a string of HTML. We'll go into some of these in more detail throughout the workshop.
+There are a number of advantages to dealing with data rather than an HTML string. We'll go into some of these in more detail throughout the workshop.
 
 ### Faster UI
 
-By manipulating data on the client, we're able to use less HTTP requests, which means users send less time waiting for things to load.
+By manipulating data on the client, we're able to use less HTTP requests, which means users spend less time waiting for things to load.
 
-### Modular code
+### Seperation of concerns
 
-ReactJS components are self contained and keep their internal 'state' in memory as opposed to the DOM. ReactJS components are only responsible for updating themselves so don't cause side-effects in other components.
+The server is left to deal with data. It doesn't have to worry about layout or how the UI is displayed. All of that is handled on the client-side.
 
 ### Composable UI
 
-Again because you're dealing with data, UI components can be passed around like any other data, which means you can build up complex UI very easily.
-
-These are just some of the reasons ReactJS is great for building a complex and extendable UI.
+Because you're dealing with data, UI components can be passed around like any other data, which means you can build up complex UI very easily.
 
 ## Getting started
-
-Now we've had a quick look at what ReactJS does and some of the reasons to use it, let's get into the workshop.
 
 After completing the workshop you'll have a solid foundation for building ReactJS components in SilverStripe CMS. We'll work through building a simple event management interface for the CMS.
 
 ### Requirements
 
-To complete the workshop you'll need a few things.
+To complete this workshop you'll need a few things.
 
 ### Some JavaScript knowledge
 
-You don't need to be an expert but having a basic working knowledge of JavaScript is essential. Having some experience with ES6 will be useful but you'll survive without it.
+You don't need to be an expert but having a basic working knowledge of JavaScript is essential. Some experience with ES6 will be useful but you'll survive without it.
 
-### An environment with the a few things installed
+### An environment with a few things installed
 
-In addition to the basic [SilverStripe requirements](https://docs.silverstripe.org/en/3.2/getting_started/server_requirements/), you'll need:
+In addition to the basic [SilverStripe requirements](https://docs.silverstripe.org/en/3.2/getting_started/server_requirements/), you'll also need:
 
 - composer
 - git
 - Node.js v4.x
 
-If you're thinking OMG I need Node.js installed in production to use React - don't panic. Node.js is only required on you local dev environment to install dev dependencies (via npm) and run some build tasks.
+If you're thinking OMG I need Node.js installed in production to use React - don't panic. Node.js is only required on your local dev environment to install dev dependencies (via npm) and run some build tasks.
 
 ### Resources
 
@@ -108,15 +104,15 @@ React.render(
 );
 ```
 
-ES6 is not fully supported by browsers yet. So for now we have to transcompile our code back to ES5 which browsers understand. We'll get more into the specific of how this works in Part 3 so for now just open up your terminal and run `npm run build`.
+ES6 is not fully supported by browsers yet. So for now we have to transcompile our code back to ES5 which browsers understand. We'll get more into the specifics of how this works when we look at the build tool chain so for now just open up your terminal and run `npm run build`.
 
-Assuming that went smoothly - we can now take a look at the result. Start up a test server in working directory with `php -S localhost:8000` and open up `http://localhost:8000` in your browser. You should see 'Event Manager' on your screen.
+Assuming that went smoothly - we can now take a look at the result. Start up a test server in your working directory with `php -S localhost:8000` and open up `http://localhost:8000` in your browser. You should see 'Event Manager' on your screen.
 
 High fives - you just made a ReactJS component!
 
 This is cool and all, but it's not very useful, so let's plug in some data.
 
-First we need to pass the data source to `EventManagerComponent`. Remember components should be reusable, so we're going to pass the source into the component, rather than hard coding the source _inside_ the component. This mean we can reuse the component in multiple places, each with a different data source, if we wanted.
+First we need to pass the _data source_ to `EventManagerComponent`. Remember components should be reusable, so we're going to pass the data source _into_ the component, rather than hard coding the source _inside_ the component. This means we can reuse the component in multiple places, each with a different data source, if we want.
 
 __./src/main.js__
 ```javascript
@@ -186,13 +182,13 @@ EventManagerComponent.propTypes = {
 export default EventManagerComponent;
 ```
 
-ReactJS has some handy [life-cycle methods](https://facebook.github.io/react/docs/component-specs.html). Here's we're using `componentDidMount` to perform an AJAX request for our event data.
+ReactJS has some handy [life-cycle methods](https://facebook.github.io/react/docs/component-specs.html). Here we're using `componentDidMount` to perform an AJAX request for our event data.
 
 We're also using [prop validation](https://facebook.github.io/react/docs/reusable-components.html#prop-validation) to make sure the source gets passed in.
 
 Rebuild your JavaScript with `npm run build` and refresh your browser. You should see a list of events.
 
-This is good. But remember at the start, one of the nice things about ReactJS is everything can be broken down into modules. Let's break our `EventManagerComponent` up a bit.
+This is good. But we can make things a bit more modular here. Let's break our `EventManagerComponent` up a bit.
 
 __./src/event-component.js__
 ```javascript
