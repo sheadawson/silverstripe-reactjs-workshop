@@ -349,6 +349,8 @@ describe('EventManagerComponent', () => {
 
 You can run the tests with `npm run test`. Unit tests should be run whenever make code changes to ensure you haven't broken anything. If you're developing a new component, write a unit test to go along with it, it will save you a whole lot of headaches down the track.
 
+After running the tests you'll see a `coverage` folder in your working directory. Jest uses the [Istanbul](https://github.com/gotwarlost/istanbul) library to generate code coverage reports. These reports are useful for finding holes in your suite of unit tests. At this stage our application is very simple so it's not all that useful. Well check back in on our coverage report once we start building out some features.
+
 ## Part 3: The build tool chain
 
 ## Part 4: Integrating with the CMS
