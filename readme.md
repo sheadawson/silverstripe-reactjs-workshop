@@ -241,14 +241,14 @@ class EventManagerComponent extends React.Component {
     }
 
     render() {
-        var events = this.state.events.map((event) => {
+        var events = this.state.events.map((event, i) => {
             var props = {
                 title: event.title,
                 date: event.date,
                 description: event.description
             };
 
-            return <EventComponent {...props} />
+            return <EventComponent key={i} {...props} />
         });
 
         return (
