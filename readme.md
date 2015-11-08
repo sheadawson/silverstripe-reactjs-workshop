@@ -278,6 +278,77 @@ Now we have our basic component structure let's take a look at how we can test i
 
 ## Part 2: Unit testing
 
+Unit testing is an important part of the development cycle. Having unit tests means you can make code changes and develop new features without having to worry (as much) about your changes breaking other parts of the application. Unit testing isn't a replacement for manual and end-to-end testing, it's an addition, add focusses on isolated parts of you application's functionality.
+
+Let's write a test for our new `EventManagerComponent` using the [Jest](https://facebook.github.io/jest/) unit testing framework.
+
+__./tests/javascript/event-manager-component-test.js__
+
+```javascript
+jest.dontMock('../../src/event-manager-component');
+
+describe('EventManagerComponent', () => {
+
+    var React = require('react/addons'),
+        $ = require('jquery'),
+        TestUtils = React.addons.TestUtils,
+        EventManagerComponent = require('../../src/event-manager-component'),
+        props = {
+            source: 'data/events.json'
+        };
+
+    describe('component bootstrap', () => {
+        var component;
+
+        beforeEach(() => {
+            component = TestUtils.renderIntoDocument(
+                <EventManagerComponent {...props} />
+            );
+        });
+
+        it('should set up some default state', () => {
+            expect(component.state.events).toBeDefined();
+        });
+
+        it('should make an AJAX request for event data', () => {
+            expect($.getJSON).toBeCalledWith(props.source, jasmine.any(Function));
+        });
+    });
+
+    describe('handleNewEventData()', () => {
+        var component = TestUtils.renderIntoDocument(
+            <EventManagerComponent {...props} />
+        );
+
+        it('should update the component state with new event data', () => {
+            expect(component.state.events.length).toBe(0);
+
+            component.handleNewEventData({
+                "events": [{
+                    "title": "Hack Day",
+                    "date": "Fri Nov 06 2015",
+                    "description": "Come along and hack code, eat pizza, and learn some new things at our next Hack Day!"
+                },
+                {
+                    "title": "Show and Tell",
+                    "date": "Wed Nov 18 2015",
+                    "description": "We've got some awesome presentations at this months Show and Tell. Bring along some lunch and enjoy."
+                },
+                {
+                    "title": "JavaScript Guild",
+                    "date": "Thu Nov 26 2015",
+                    "description": "This month we're looking at how you can integrate ReactJS with SilverStripe."
+                }]
+            });
+
+            expect(component.state.events.length).toBe(3);
+        });
+    });
+});
+```
+
+You can run the tests with `npm run test`. Unit tests should be run whenever make code changes to ensure you haven't broken anything. If you're developing a new component, write a unit test to go along with it, it will save you a whole lot of headaches down the track.
+
 ## Part 3: The build tool chain
 
 ## Part 4: Integrating with the CMS
