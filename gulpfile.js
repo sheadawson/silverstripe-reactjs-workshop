@@ -12,10 +12,6 @@ if (!nodeVersionIsValid) {
     process.exit();
 }
 
-gulp.task('js:watch', function () {
-    gulp.watch('./src', ['js']);
-});
-
 gulp.task('js', function () {
     browserify({
         entries: packageJSON.main,
@@ -28,4 +24,4 @@ gulp.task('js', function () {
     .pipe(gulp.dest('./dist'));
 });
 
-gulp.task('default', ['js:watch', 'js']);
+gulp.task('default', ['js']);
