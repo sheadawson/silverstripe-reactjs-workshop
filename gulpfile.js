@@ -12,6 +12,10 @@ if (!nodeVersionIsValid) {
     process.exit();
 }
 
+gulp.task('js:watch', function () {
+    gulp.watch('./src', ['js']);
+});
+
 gulp.task('js', function () {
     browserify({
         entries: packageJSON.main,
@@ -25,3 +29,4 @@ gulp.task('js', function () {
 });
 
 gulp.task('default', ['js']);
+gulp.task('watch', ['js:watch', 'js']);
