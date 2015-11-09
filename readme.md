@@ -353,6 +353,153 @@ After running the tests you'll see a `coverage` folder in your working directory
 
 ## Part 3: The build tool chain
 
+We've been running commands like `npm run build` and `npm run test` which run dev tasks for us. But what's actually going on there? Let's take a closer look.
+
+### npm
+
+npm is a package manager for JavaScript. It makes it really easy to share and reuse code. The configuration for an npm package lives in `package.json` and includes things like the package's name, repository, and dependencies. A handy feature of npm is scripts. These allow us to run CLI commands with any `node_modules` dependencies included in our `$PATH`. You run them with `npm run <NAME>`. That's how we're able to run our build and unit tests. Take a look at `package.json` and see the `script` property.
+
+For more info on npm see the [getting started video](https://docs.npmjs.com/getting-started/what-is-npm).
+
+### Gulp
+
+Gulp is an automation tool and build system for JavaScript projects. There's a large ecosystem of [plugins](http://gulpjs.com/plugins/) which can be combined to automate a lot of common tasks like transcompiling, minifying, and generating docs.
+
+In our project we're using Gulp (and some plugins) to transform out ES6 code to ES5 with Babel and generate a bundle file with Browserify.
+
+Take a look at  `gulpfile.js` to see how our tasks are defined.
+
+For more info on Gulp see [gulpjs.com](http://gulpjs.com/).
+
+### Babel
+
+Babel is a JavaScript compiler. Well - sort of. It's not a compiler in the traditional sense. Babel 'transcompiles' JavaScript to errr more JavaScript. In our case we're transcompiling from ES6 to ES5 and also transforming some [JSX](https://facebook.github.io/react/docs/jsx-in-depth.html) to JavaScript along the way.
+
+For more info on Babel take a look at [babeljs.io](https://babeljs.io/).
+
+### Browserify
+
+Browsers don't natively support modules yet. So we're using Browserify to fill that gap. Browserify uses the CommonJS pattern popularised by Node.js to allow developers to write modular code. The pattern looks like this in ES5.
+
+```javascript
+function MyModule() {
+    this.name = 'My Module';
+}
+
+MyModule.prototype.doStuff = function () {
+    return 'I did some stuff';
+}
+
+module.exports = MyModule
+```
+
+Here we have create a module called 'MyModule' which we can now include in another JavaScript file like this.
+
+```javascript
+var MyModule = require('my-module');
+
+(function () {
+    var myStuff = new MyModule();
+    
+    myStuff.doStuff(); // I did some stuff
+}());
+```
+
+We're using ES6 so the syntax looks slightly different with `import` and `export` but the idea is the same. We can write modules which live in seperate files and include them where we like. Babel takes care for transcompiling our `import` statements into `require` statements.
+
+The result of Browserifing your project is a 'bundle' file. The bundle file (see `./dist/bundle.js`) is a concatenated blob of JavaScript which has all of the JavaScript required to run the application.
+
+Browserify starts at an 'entry file' (see `./src/main.js`) then creates a dependency tree from all of the `require` statements it finds. All of those files are wrapped in a browser usable `require` implementation and output to a single bundle file.
+
+Browserify bundles are more than just concatenated JavaScript, there is also an API you can use to do some interesting things, but we'll look at that a little later.
+
+### Creating a 'watch' task
+
+Now that we've seen what makes up our build tool chain let's make a little task to take the hassle out of running `npm run build` all the time.
+
+Our watch task will monitor the JavaScript files in our `./src` directory and automatically trigger a build whenever a file changes.
+
+__./gulpfile.js__
+
+```javascript
+var gulp = require('gulp'),
+    browserify = require('browserify'),
+    babelify = require('babelify'),
+    source = require('vinyl-source-stream'),
+    packageJSON = require('./package.json'),
+    semver = require('semver');
+
+var nodeVersionIsValid = semver.satisfies(process.versions.node, packageJSON.engines.node);
+
+if (!nodeVersionIsValid) {
+    console.error('Invalid Node.js version. You need to be using ' + packageJSON.engines.node);
+    process.exit();
+}
+
+gulp.task('js:watch', function () {
+    gulp.watch('./src', ['js']);
+});
+
+gulp.task('js', function () {
+    browserify({
+        entries: packageJSON.main,
+        extensions: ['.js'],
+        debug: true
+    })
+    .transform(babelify)
+    .bundle()
+    .pipe(source('bundle.js'))
+    .pipe(gulp.dest('./dist'));
+});
+
+gulp.task('default', ['js']);
+gulp.task('watch', ['js:watch', 'js']);
+```
+
+__package.json__
+
+```json
+{
+  "name": "silverstripe-event-manager",
+  "version": "1.0.0",
+  "description": "An event management interface for SilverStripe CMS",
+  "main": "./src/main.js",
+  "scripts": {
+    "build": "gulp",
+    "build:watch": "gulp watch",
+    "test": "jest --coverage"
+  },
+  "keywords": [
+    "SilverStripe",
+    "ReactJS"
+  ],
+  "engines": {
+    "node": "^4.0.0"
+  },
+  "devDependencies": {
+    "babel-jest": "^5.3.0",
+    "babelify": "^6.3.0",
+    "browserify": "^12.0.1",
+    "gulp": "^3.9.0",
+    "jest-cli": "^0.5.10",
+    "jquery": "^2.1.4",
+    "react": "^0.13.0",
+    "semver": "^5.0.3",
+    "vinyl-source-stream": "^1.1.0"
+  },
+  "jest": {
+    "scriptPreprocessor": "<rootDir>/node_modules/babel-jest",
+    "testDirectoryName": "tests/javascript",
+    "unmockedModulePathPatterns": [
+      "<rootDir>/node_modules/react"
+    ],
+    "bail": true
+  }
+}
+```
+
+Now we can run `npm run build:watch` to start watching for changes to our source files.
+
 ## Part 4: Integrating with the CMS
 
 ## Part 5: ReactJS + Entwine
