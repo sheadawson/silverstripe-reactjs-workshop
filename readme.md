@@ -544,6 +544,90 @@ Run `composer update` to pull down `silverstripe-reactjs-common`.
 
 Now it's time to create our own SilverStripe module, where our Event Manager code will live.
 
+First we'll scaffold the module using the [SilverStripe Module Generator](https://github.com/flashbackzoo/generator-silverstripe-module). Once you have it installed create a new directory for the module `mkdir silverstripe-event-manager`.
+
+Inside the `silverstripe-event-manager` directory run `yo silverstripe-module` and follow the prompts.
+
+The core of our Event Manager module is going to be a [ModelAdmin](https://docs.silverstripe.org/en/3.1/developer_guides/customising_the_admin_interface/modeladmin/). From here we'll be able to add, remove, and edit events. Let's start by creating the ModelAdmin.
+
+__./silverstripe-event-manager/code/admin/EventManagerAdmin.php__
+
+```php
+<?php
+
+class EventManagerAdmin extends ModelAdmin {
+
+    private static $managed_models = array(
+        'Event',
+    );
+
+    private static $url_segment = 'events';
+
+    private static $menu_title = 'Event Manager';
+}
+```
+
+Now we need to create the model class we want to manage.
+
+__./silverstripe-event-manager/code/model/Event.php__
+
+```php
+<?php
+
+class Event extends DataObject {
+
+    private static $db = array(
+        'Title' => 'Varchar',
+        'Description' => 'HTMLText',
+        'Date' => 'Date'
+    );
+}
+```
+
+Run a `dev/build` and reload the CMS. You should see 'Event Manager' in the left hand menu. Go into the Event Manager and add a few events, this will be the data we render into our ReactJS component soon.
+
+## Part 5: ReactJS + Entwine
+
+Now we've got our basic component and build tooling down, we're going to start integrating with the CMS, by creating a [SilverStripe module](https://docs.silverstripe.org/en/3.2/developer_guides/extending/modules/).
+
+First we need to create a SilverStripe site as a base to work from. To set this up follow the [composer installation guide](https://docs.silverstripe.org/en/3.1/getting_started/composer/).
+
+In addition to the base SilverStripe install we also need the [silverstripe-reactjs-common](https://github.com/open-sausages/silverstripe-reactjs-common) module. This makes ReactJS available throughout the CMS so we don't have to explicitly require it in our codebase. Currently ReactJS is listed as one of our dev-dependencies in `package.json`, after completing this step, we'll remove ReactJS from our dev-dependencies and use the copy from `silverstripe-reactjs-common` instead.
+
+```javascript
+{
+    "name": "silverstripe/installer",
+    "description": "The SilverStripe Framework Installer",
+    "repositories": [{
+        "type": "vcs",
+        "url": "https://github.com/open-sausages/silverstripe-reactjs-common"
+    }],
+    "require": {
+        "php": ">=5.3.3",
+        "silverstripe/cms": "3.2.0",
+        "silverstripe/framework": "3.2.0",
+        "silverstripe/reports": "3.2.0",
+        "silverstripe/siteconfig": "3.2.0",
+        "silverstripe-themes/simple": "3.1.*"
+    },
+    "require-dev": {
+        "phpunit/PHPUnit": "~3.7",
+        "silverstripe/reactjs-common": "dev-master"
+    },
+    "config": {
+        "process-timeout": 600
+    },
+    "prefer-stable": true,
+    "minimum-stability": "dev"
+}
+```
+
+Run `composer update` to pull down `silverstripe-reactjs-common`.
+
+### Create the Event Manager module
+
+Now it's time to create our own SilverStripe module, where our Event Manager code will live.
+
 #### Module scaffolding
 
 First we'll scaffold the module using the [SilverStripe Module Generator](https://github.com/flashbackzoo/generator-silverstripe-module). Once you have it installed create a new directory for the module `mkdir silverstripe-event-manager`.
