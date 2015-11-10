@@ -7,4 +7,8 @@ class Event extends DataObject {
 		'Description' => 'HTMLText',
 		'Date' => 'Date'
 	);
+
+	 private static $has_one = array(
+		'EventManagerPage' => 'EventManagerPage'
+	);
 }
