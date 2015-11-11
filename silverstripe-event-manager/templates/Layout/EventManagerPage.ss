@@ -1,1 +1,1 @@
-<div id="event-manager-component-wrapper">asd</div>
+<div id="event-manager-component-wrapper" data-fetch-endpoint="$FetchEndpoint"></div>
