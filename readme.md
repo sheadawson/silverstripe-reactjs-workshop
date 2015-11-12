@@ -890,7 +890,178 @@ class Event extends DataObject {
 
 Try updating an event now - the changes should be reflected on the front-end.
 
-#### Filtering the results
+#### Sorting events
+
+Our events currently appear in order they were created. Let's create a 'sort order' dropdown so we can sort by title and date.
+
+__./silverstripe-event-manager/javascript/src/sort-component.js__
+
+```javascript
+import React from 'react';
+
+class SortComponent extends React.Component {
+
+    constructor(props) {
+        super(props);
+
+        this.handleChange = this.handleChange.bind(this);
+    }
+
+    render() {
+        var options = this.props.options.map((option, i) => {
+            return (
+                <option key={i}>{option}</option>
+            );
+        });
+
+        return (
+            <div className='sort-component'>
+                <select onChange={this.handleChange} value={this.props.value}>
+                    {options}
+                </select>
+            </div>
+        );
+    }
+
+    handleChange(event) {
+        this.props.updateSortOrder(event.target.value);
+    }
+}
+
+SortComponent.propTypes = {
+    options: React.PropTypes.array.isRequired,
+    value: React.PropTypes.string.isRequired,
+    updateSortOrder: React.PropTypes.func.isRequired
+}
+
+export default SortComponent;
+```
+
+This is the dropdown the user will interact with. Now we need to include it in our `EventManagerComponent`.
+
+__./silverstripe-event-manager/javascript/src/event-manager-component.js__
+
+```javascript
+import React from 'react';
+import $ from 'jquery';
+import SortComponent from './sort-component';
+import EventComponent from './event-component';
+
+class EventManagerComponent extends React.Component {
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            events: [],
+            sortOrder: 'title'
+        };
+
+        this.updateSortOrder = this.updateSortOrder.bind(this);
+    }
+
+    componentDidMount() {
+        $.getJSON(this.props.source, this.handleNewEventData.bind(this));
+    }
+
+    render() {
+        var sortComponentProps = {
+            options: ['title', 'date'],
+            value: this.state.sortOrder,
+            updateSortOrder: this.updateSortOrder
+        };
+
+        var events = this.state.events.map((event, i) => {
+            var eventComponentProps = {
+                title: event.title,
+                date: event.date,
+                description: event.description
+            };
+
+            return <EventComponent key={i} {...eventComponentProps} />
+        });
+
+        return (
+            <div className='event-manager-component'>
+                <SortComponent {...sortComponentProps} />
+                {events}
+            </div>
+        );
+    }
+
+    handleNewEventData(data) {
+        this.updateSortOrder(this.state.sortOrder, data.events);
+    }
+
+    updateSortOrder(sortOrder, events = this.state.events) {
+        var comparator = null;
+
+        switch (sortOrder) {
+            case 'title':
+                comparator = (a, b) => {
+                    var result = 0;
+
+                    if (a.title.toLowerCase() < b.title.toLowerCase()) {
+                        result = -1;
+                    } else if (a.title.toLowerCase() > b.title.toLowerCase()) {
+                        result = 1;
+                    }
+
+                    return result;
+                };
+
+                break;
+            case 'date':
+                comparator = (a, b) => {
+                    var result = 0,
+                        d1 = new Date(a.date),
+                        d2 = new Date(b.date);;
+
+                    if (d1 < d2) {
+                        result = -1;
+                    } else if (d1 > d2) {
+                        result = 1;
+                    }
+
+                    return result;
+                };
+
+                break;
+            default:
+                return;
+        }
+
+        this.setState({
+            events: events.sort(comparator),
+            sortOrder: sortOrder
+        });
+    }
+}
+
+EventManagerComponent.propTypes = {
+    source: React.PropTypes.string.isRequired
+}
+
+export default EventManagerComponent;
+```
+
+There's quite a bit going on here so let's take a closer look at a few things.
+
+##### constructor
+
+In the constructor we've added a default sort order to the state. Then we re-assign the value of `this.updateSortOrder`. The re-assignment is a workaround to a current limitation of ReactJS when using it with ES6 classes. Context works slightly differently in ES6 so we're having to manually bind the `EventManagerComponent` instance's context so that it's available when the method is called later on. Don't worry about this too much - it should be fixed in the next version of ReactJS.
+
+##### render
+
+This is where we render our new `SortComponent`. We pass in some props just like we did previously with the `EventComponent`. The main difference with `SortComponent` is we're also passing a method, `this.updateSortOrder` which belongs to `EventManagerComponent`, into our component when it's rendered. We do this because our state (where events live) is on `EventManagerComponent`.Passing in this method allows `SortComponent` to pass changes back up to `EventManagerComponent`.
+
+##### updateSortOrder
+
+This is where the actual sorting happens. When this method is called with a sort order and an events array (defaults to the current events in state) a 'comparator' function is assigned based on the sort order. The comparator is used by the `Array.sort` method to sort the events. Then we set the new state which triggers a render and out newly sorted events are displayed.
+
+##### handleNewEventData
+
+We've update this method so that new events are sorted by our current sort order.
 
 #### Adding pagination
 
