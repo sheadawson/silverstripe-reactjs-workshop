@@ -502,6 +502,712 @@ Now we can run `npm run build:watch` to start watching for changes to our source
 
 ## Part 4: Integrating with the CMS
 
-## Part 5: ReactJS + Entwine
+### Install SilverStripe
 
-## Part 6: Making your component reusable
+Now we've got our basic component and build tooling down, we're going to start integrating with the CMS, by creating a [SilverStripe module](https://docs.silverstripe.org/en/3.2/developer_guides/extending/modules/).
+
+First we need to create a SilverStripe site as a base to work from. To set this up follow the [composer installation guide](https://docs.silverstripe.org/en/3.1/getting_started/composer/).
+
+In addition to the base SilverStripe install we also need the [silverstripe-reactjs-common](https://github.com/open-sausages/silverstripe-reactjs-common) module. This makes ReactJS available throughout the CMS so we don't have to explicitly require it in our codebase. Currently ReactJS is listed as one of our dev-dependencies in `package.json`, after completing this step, we'll remove ReactJS from our dev-dependencies and use the copy from `silverstripe-reactjs-common` instead.
+
+```javascript
+{
+    "name": "silverstripe/installer",
+    "description": "The SilverStripe Framework Installer",
+    "repositories": [{
+        "type": "vcs",
+        "url": "https://github.com/open-sausages/silverstripe-reactjs-common"
+    }],
+    "require": {
+        "php": ">=5.3.3",
+        "silverstripe/cms": "3.2.0",
+        "silverstripe/framework": "3.2.0",
+        "silverstripe/reports": "3.2.0",
+        "silverstripe/siteconfig": "3.2.0",
+        "silverstripe-themes/simple": "3.1.*"
+    },
+    "require-dev": {
+        "phpunit/PHPUnit": "~3.7",
+        "silverstripe/reactjs-common": "dev-master"
+    },
+    "config": {
+        "process-timeout": 600
+    },
+    "prefer-stable": true,
+    "minimum-stability": "dev"
+}
+```
+
+Run `composer update` to pull down `silverstripe-reactjs-common`.
+
+### Create the Event Manager module
+
+Now it's time to create our own SilverStripe module, where our Event Manager code will live.
+
+#### Module scaffolding
+
+First we'll scaffold the module using the [SilverStripe Module Generator](https://github.com/flashbackzoo/generator-silverstripe-module). Once you have it installed create a new directory for the module `mkdir silverstripe-event-manager`.
+
+Inside the `silverstripe-event-manager` directory run `yo silverstripe-module` and follow the prompts.
+
+The core of our Event Manager module is going to be a custom Page Type called `EventManagerPage`. Our `EventManagerPage` will have a GridField which we'll use to manage our events in the CMS. Our event data will be served up as JSON on the front-end for our ReactJS component to consume om nom nom.
+
+So let's start by creating our custom Page Type.
+
+#### Creating a custom page type
+
+__./silverstripe-event-manager/code/EventManagerPage.php__
+
+```php
+<?php
+
+class EventManagerPage extends Page {
+
+    private static $has_many = array(
+        'Events' => 'Event'
+    );
+
+    public function getCMSFields() {
+        $fields = parent::getCMSFields();
+
+        $config = GridFieldConfig_RelationEditor::create();
+
+        $config
+            ->getComponentByType('GridFieldDataColumns')
+            ->setDisplayFields(array(
+                'Title' => 'Title',
+                'Date'=> 'Date'
+            ));
+
+        $eventsField = new GridField('Events', 'Events', $this->Events(), $config);
+
+        $fields->addFieldToTab('Root.Events', $eventsField); 
+
+        return $fields;
+    }
+}
+
+class EventManagerPage_Controller extends Page_Controller {
+    public function init() {
+        parent::init();
+
+        Requirements::javascript(SILVERSTRIPE_EVENT_MANAGER_DIR . '/javascript/dist/bundle.js');
+    }
+}
+```
+
+Now we need to create the `Event` class which our GridField is going to manage.
+
+__./silverstripe-event-manager/code/model/Event.php__
+
+```php
+<?php
+
+class Event extends DataObject {
+
+    private static $db = array(
+        'Title' => 'Varchar',
+        'Description' => 'HTMLText',
+        'Date' => 'Date'
+    );
+
+     private static $has_one = array(
+        'EventManagerPage' => 'EventManagerPage'
+    );
+}
+```
+
+Run a `dev/build` and reload the CMS. You should now be able to create a new 'Event Manager Page'. Create one of those and make a few events.
+
+There are some file we have to copy across now. The module generator creates a `gulpfile` and an example ReactJS component for you but we want to replace those with the ones we have already. We'll also have to move our test data and tidy up any files left at the top level.
+
+If all this has gone to plan you should see the test data we saw before when you view the new page on the front-end.
+
+#### Fetching real data
+
+OK - time to display some 'real' data. Our component is going to request data via our page's controller. Here's how we'll set that up.
+
+__./silverstripe-event-manager/code/EventManagerPage.php__
+
+```php
+<? php
+
+...
+
+class EventManagerPage_Controller extends Page_Controller {
+
+    private static $allowed_actions = array(
+        'fetch'
+    );
+
+    public function init() {
+        parent::init();
+
+        Requirements::javascript(SILVERSTRIPE_EVENT_MANAGER_DIR . '/javascript/dist/bundle.js');
+    }
+
+    public function fetch(SS_HTTPRequest $request) {
+        $this->response->setBody(json_encode(array(
+            'json' => true
+        )));
+
+        $this->response->addHeader('Content-type', 'application/json');
+
+        return $this->response;
+    }
+}
+```
+
+More info on SilverStripe controllers is available at [https://docs.silverstripe.org/en/3.2/developer_guides/controllers/introduction/](https://docs.silverstripe.org/en/3.2/developer_guides/controllers/introduction/).
+
+Make sure this is working by visiting http://yoursite.local/event-manager-page/fetch. You should see `{"json":true}`.
+
+Now we're going to get the event records we created earlier from the database and return them as JSON.
+
+__./silverstripe-event-manager/code/EventManagerPage.php__
+
+```php
+<? php
+
+...
+
+class EventManagerPage_Controller extends Page_Controller {
+
+    private static $allowed_actions = array(
+        'fetch'
+    );
+
+    public function init() {
+        parent::init();
+
+        Requirements::javascript(SILVERSTRIPE_EVENT_MANAGER_DIR . '/javascript/dist/bundle.js');
+    }
+
+    public function fetch(SS_HTTPRequest $request) {
+        $data = array(
+            'events' => array()
+        );
+
+        foreach ($this->Events() as $event) {
+            array_push($data['events'], array(
+                'title' => $event->Title,
+                'date' => $event->Date,
+                'description' => $event->Description
+            ));
+        };
+
+        $this->response->addHeader('Content-type', 'application/json');
+        $this->response->setBody(json_encode($data));
+
+        return $this->response;
+    }
+}
+```
+
+Visit http://yoursite.local/event-manager-page/fetch again and you should see the event data you created in the CMS.
+
+Time to update out component so it uses our endpoint. First our component needs to know where the endpont is...
+
+__./silverstripe-event-manager/code/EventManagerPage.php__
+
+```php
+<? php
+
+...
+
+class EventManagerPage_Controller extends Page_Controller {
+
+    ...
+    
+    public function getFetchEndpoint() {
+        return $this->Link() . 'fetch';
+    }
+}
+```
+
+__./silverstripe-event-manager/templates/Layout/EventManagerPage.ss__
+
+```html
+<div id="event-manager-component-wrapper" data-fetch-endpoint="$FetchEndpoint"></div>
+```
+
+Now we can update our component code. Because we didn't hardcode the data source _into_ the component itself, all we need to do is update `main.js`, simple!
+
+__./silverstripe-event-manager/javascript/src/main.js__
+
+```javascript
+import React from 'react';
+import EventManagerComponent from './event-manager-component';
+
+var wrapperElement = document.getElementById('event-manager-component-wrapper');
+
+var props = {
+    source: wrapperElement.getAttribute('data-fetch-endpoint')
+};
+
+React.render(
+    <EventManagerComponent {...props} />,
+    wrapperElement
+);
+```
+
+After a build and refresh you should see the events you created displayed on the page.
+
+#### Performance improvement
+
+With our current setup, each request to the 'fetch' endpoint creates a database request, we can make this better. Imagine we have 100 people on our events page, that means 100 database requests, each one returning the same set of data.
+
+We can eliminate these database requests by using SilverStripe's [SS_Cache](https://docs.silverstripe.org/en/3.1/developer_guides/performance/caching/). This will create a static file on disk for our data which is much quicker to return than a database request.
+
+__./silverstripe-event-manager/code/EventManagerPage.php__
+
+```php
+<?php
+
+class EventManagerPage extends Page {
+
+    private static $has_many = array(
+        'Events' => 'Event'
+    );
+
+    public function getCMSFields() {
+        $fields = parent::getCMSFields();
+
+        $config = GridFieldConfig_RelationEditor::create();
+
+        $config
+            ->getComponentByType('GridFieldDataColumns')
+            ->setDisplayFields(array(
+                'Title'=> 'Title',
+                'Date' => 'Date'
+            ));
+
+        $eventsField = new GridField('Events', 'Events', $this->Events(), $config);
+
+        $fields->addFieldToTab('Root.Events', $eventsField); 
+
+        return $fields;
+    }
+
+    public function onAfterWrite() {
+        parent::onAfterWrite();
+
+        $this->updateEventCache();
+    }
+
+    private function generateEventJSON() {
+        $data = array(
+            'events' => array()
+        );
+
+        foreach ($this->Events() as $event) {
+            array_push($data['events'], array(
+                'title' => $event->Title,
+                'date' => $event->Date,
+                'description' => $event->Description
+            ));
+        };
+
+        return json_encode($data);
+    }
+
+    public function getEventJSON() {
+        $cache = SS_Cache::factory('EventManagerPage_Events');
+
+        if (!($json = $cache->load($this->ID))) {
+            $json = $this->updateEventCache();
+        }
+
+        return $json;
+    }
+
+    public function updateEventCache() {
+        $cache = SS_Cache::factory('EventManagerPage_Events');
+
+        $json = $this->generateEventJSON();
+
+        $cache->save($json, $this->ID);
+
+        return $json;
+    }
+}
+
+class EventManagerPage_Controller extends Page_Controller {
+
+    private static $allowed_actions = array(
+        'fetch'
+    );
+
+    public function init() {
+        parent::init();
+
+        Requirements::javascript(SILVERSTRIPE_EVENT_MANAGER_DIR . '/javascript/dist/bundle.js');
+    }
+
+    public function fetch(SS_HTTPRequest $request) {
+        $json = $this->getEventJSON();
+
+        $this->response->addHeader('Content-type', 'application/json');
+        $this->response->setBody($json);
+
+        return $this->response;
+    }
+
+    public function getFetchEndpoint() {
+        return $this->Link() . 'fetch';
+    }
+}
+```
+
+Now we've implemented caching, which is good, but we've introduced a UX issue. Login to the CMS and edit an existing event. Save the event and refresh your page. Oops - your updates aren't there. Now re-publish the page and refresh on the font-end. There are your changes!
+
+The reason for this is we only regenerate the cache when the _page_ is publish and not when the _event_ is saved. This will be confusing for anyone using the event manager so let's fix it up so that the cache is regenerated when events are updated too.
+
+__./silverstripe-event-manager/code/model/Event.php__
+
+```php
+<?php
+
+class Event extends DataObject {
+
+    private static $db = array(
+        'Title' => 'Varchar',
+        'Description' => 'Text',
+        'Date' => 'Date'
+    );
+
+    private static $has_one = array(
+        'EventManagerPage' => 'EventManagerPage'
+    );
+
+    public function onAfterWrite() {
+        parent::onAfterWrite();
+
+        $this->EventManagerPage()->updateEventCache();
+    }
+}
+```
+
+Try updating an event now - the changes should be reflected on the front-end.
+
+#### Sorting events
+
+Our events currently appear in order they were created. Let's create a 'sort order' dropdown so we can sort by title and date.
+
+__./silverstripe-event-manager/javascript/src/sort-component.js__
+
+```javascript
+import React from 'react';
+
+class SortComponent extends React.Component {
+
+    constructor(props) {
+        super(props);
+
+        this.handleChange = this.handleChange.bind(this);
+    }
+
+    render() {
+        var options = this.props.options.map((option, i) => {
+            return (
+                <option key={i}>{option}</option>
+            );
+        });
+
+        return (
+            <div className='sort-component'>
+                <select onChange={this.handleChange} value={this.props.value}>
+                    {options}
+                </select>
+            </div>
+        );
+    }
+
+    handleChange(event) {
+        this.props.updateSortOrder(event.target.value);
+    }
+}
+
+SortComponent.propTypes = {
+    options: React.PropTypes.array.isRequired,
+    value: React.PropTypes.string.isRequired,
+    updateSortOrder: React.PropTypes.func.isRequired
+}
+
+export default SortComponent;
+```
+
+This is the dropdown the user will interact with. Now we need to include it in our `EventManagerComponent`.
+
+__./silverstripe-event-manager/javascript/src/event-manager-component.js__
+
+```javascript
+import React from 'react';
+import $ from 'jquery';
+import SortComponent from './sort-component';
+import EventComponent from './event-component';
+
+class EventManagerComponent extends React.Component {
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            events: [],
+            sortOrder: 'title'
+        };
+
+        this.updateSortOrder = this.updateSortOrder.bind(this);
+    }
+
+    componentDidMount() {
+        $.getJSON(this.props.source, this.handleNewEventData.bind(this));
+    }
+
+    render() {
+        var sortComponentProps = {
+            options: ['title', 'date'],
+            value: this.state.sortOrder,
+            updateSortOrder: this.updateSortOrder
+        };
+
+        var events = this.state.events.map((event, i) => {
+            var eventComponentProps = {
+                title: event.title,
+                date: event.date,
+                description: event.description
+            };
+
+            return <EventComponent key={i} {...eventComponentProps} />
+        });
+
+        return (
+            <div className='event-manager-component'>
+                <SortComponent {...sortComponentProps} />
+                {events}
+            </div>
+        );
+    }
+
+    handleNewEventData(data) {
+        this.updateSortOrder(this.state.sortOrder, data.events);
+    }
+
+    updateSortOrder(sortOrder, events = this.state.events) {
+        var comparator = null;
+
+        switch (sortOrder) {
+            case 'title':
+                comparator = (a, b) => {
+                    var result = 0;
+
+                    if (a.title.toLowerCase() < b.title.toLowerCase()) {
+                        result = -1;
+                    } else if (a.title.toLowerCase() > b.title.toLowerCase()) {
+                        result = 1;
+                    }
+
+                    return result;
+                };
+
+                break;
+            case 'date':
+                comparator = (a, b) => {
+                    var result = 0,
+                        d1 = new Date(a.date),
+                        d2 = new Date(b.date);;
+
+                    if (d1 < d2) {
+                        result = -1;
+                    } else if (d1 > d2) {
+                        result = 1;
+                    }
+
+                    return result;
+                };
+
+                break;
+            default:
+                return;
+        }
+
+        this.setState({
+            events: events.sort(comparator),
+            sortOrder: sortOrder
+        });
+    }
+}
+
+EventManagerComponent.propTypes = {
+    source: React.PropTypes.string.isRequired
+}
+
+export default EventManagerComponent;
+```
+
+There's quite a bit going on here so let's take a closer look at a few things.
+
+##### constructor
+
+In the constructor we've added a default sort order to the state. Then we re-assign the value of `this.updateSortOrder`. The re-assignment is a workaround to a current limitation of ReactJS when using it with ES6 classes. Context works slightly differently in ES6 so we're having to manually bind the `EventManagerComponent` instance's context so that it's available when the method is called later on. Don't worry about this too much - it should be fixed in the next version of ReactJS.
+
+##### render
+
+This is where we render our new `SortComponent`. We pass in some props just like we did previously with the `EventComponent`. The main difference with `SortComponent` is we're also passing a method, `this.updateSortOrder` which belongs to `EventManagerComponent`, into our component when it's rendered. We do this because our state (where events live) is on `EventManagerComponent`.Passing in this method allows `SortComponent` to pass changes back up to `EventManagerComponent`.
+
+##### updateSortOrder
+
+This is where the actual sorting happens. When this method is called with a sort order and an events array (defaults to the current events in state) a 'comparator' function is assigned based on the sort order. The comparator is used by the `Array.sort` method to sort the events. Then we set the new state which triggers a render and out newly sorted events are displayed.
+
+##### handleNewEventData
+
+We've update this method so that new events are sorted by our current sort order.
+
+#### Adding pagination
+
+Having all of our events on one page could get crazy after a while so let's add pagination.
+
+The first think we'll want to know is how many events to display on each page. It'll be handly to have to value editable by CMS users so let's add it to `EventManagerPage`.
+
+__./silverstripe-event-manager/code/EventManagerPage.php__
+
+```php
+<?php
+
+class EventManagerPage extends Page {
+
+    private static $db = array(
+        'EventsPerPage' => 'Int'
+    );
+
+    private static $has_many = array(
+        'Events' => 'Event'
+    );
+
+    public function getCMSFields() {
+        $fields = parent::getCMSFields();
+
+        $config = GridFieldConfig_RelationEditor::create();
+
+        $config
+            ->getComponentByType('GridFieldDataColumns')
+            ->setDisplayFields(array(
+                'Title'=> 'Title',
+                'Date' => 'Date'
+            ));
+
+        $eventsField = new GridField('Events', 'Events', $this->Events(), $config);
+
+        $eventsPerPageField = new NumericField('EventsPerPage', 'Events per page');
+
+        $fields->addFieldToTab('Root.Events', $eventsPerPageField);
+        $fields->addFieldToTab('Root.Events', $eventsField);
+
+        return $fields;
+    }
+    
+    ...
+}
+```
+
+We'll get this value into out component the same way we get the fetch URL.
+
+__./silverstripe-event-manager/templates/Layout/EventManagerPage.ss__
+
+```html
+<div id="event-manager-component-wrapper" data-fetch-endpoint="$FetchEndpoint" data-events-per-page="$EventsPerPage"></div>
+```
+
+__./silverstripe-event-manager/javascript/src/main.js__
+
+```javascript
+import React from 'react';
+import EventManagerComponent from './event-manager-component';
+
+var wrapperElement = document.getElementById('event-manager-component-wrapper');
+
+var props = {
+    source: wrapperElement.getAttribute('data-fetch-endpoint'),
+    eventsPerPage: wrapperElement.getAttribute('data-events-per-page')
+};
+
+React.render(
+    <EventManagerComponent {...props} />,
+    wrapperElement
+);
+```
+
+Now when we render `EventManagerComponent` we only want to render the amount of event that our field's value allows.
+
+__./silverstripe-event-manager/javascript/src/event-manager-component.js__
+
+```javascript
+import React from 'react';
+import $ from 'jquery';
+import SortComponent from './sort-component';
+import EventComponent from './event-component';
+import PaginatorComponent from './paginator-component';
+
+class EventManagerComponent extends React.Component {
+
+    constructor(props) {
+        super(props);
+
+        this.state = {
+            events: [],
+            sortOrder: 'title'
+        };
+
+        this.updateSortOrder = this.updateSortOrder.bind(this);
+    }
+
+    componentDidMount() {
+        $.getJSON(this.props.source, this.handleNewEventData.bind(this));
+    }
+
+    render() {
+        var sortComponentProps = {
+            options: ['title', 'date'],
+            value: this.state.sortOrder,
+            updateSortOrder: this.updateSortOrder
+        };
+
+        var events = [];
+
+        var paginatorComponentProps = {};
+
+        for (let i = 0; i < this.state.events.length; i += 1) {
+            let eventComponentProps = {
+                title: this.state.events[i].title,
+                date: this.state.events[i].date,
+                description: this.state.events[i].description
+            };
+
+            events.push(
+                <EventComponent key={i} {...eventComponentProps} />
+            );
+
+            if (i === this.props.eventsPerPage - 1) {
+                break;
+            }
+        }
+
+        return (
+            <div className='event-manager-component'>
+                <SortComponent {...sortComponentProps} />
+                {events}
+            </div>
+        );
+    }
+    
+    ...
+}
+
+export default EventManagerComponent;
+```
+
+Run a dev/build then login to the CMS. You should have a new field on your `EventManagerPage` where you can enter a value for 'Events per page'. Enter a value, run a `npm run build`, and visit your page on the font-end.
+
+## Part 5: Making components reusable
+
+## Part 6: ReactJS + Entwine
