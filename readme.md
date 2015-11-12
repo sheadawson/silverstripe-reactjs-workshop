@@ -1065,8 +1065,9 @@ We've update this method so that new events are sorted by our current sort order
 
 #### Adding pagination
 
-## Part 5: ReactJS + Entwine
+Having all of our events on one page could get crazy after a while so let's add pagination.
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 Now we've got our basic component and build tooling down, we're going to start integrating with the CMS, by creating a [SilverStripe module](https://docs.silverstripe.org/en/3.2/developer_guides/extending/modules/).
 

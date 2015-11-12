@@ -27,15 +27,25 @@ class EventManagerComponent extends React.Component {
             updateSortOrder: this.updateSortOrder
         };
 
-        var events = this.state.events.map((event, i) => {
-            var eventComponentProps = {
-                title: event.title,
-                date: event.date,
-                description: event.description
+        var events = [];
+
+        var paginatorComponentProps = {};
+
+        for (let i = 0; i < this.state.events.length; i += 1) {
+            let eventComponentProps = {
+                title: this.state.events[i].title,
+                date: this.state.events[i].date,
+                description: this.state.events[i].description
             };
 
-            return <EventComponent key={i} {...eventComponentProps} />
-        });
+            events.push(
+                <EventComponent key={i} {...eventComponentProps} />
+            );
+
+            if (i === this.props.eventsPerPage - 1) {
+                break;
+            }
+        }
 
         return (
             <div className='event-manager-component'>

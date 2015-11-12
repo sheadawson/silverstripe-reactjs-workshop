@@ -2,6 +2,10 @@
 
 class EventManagerPage extends Page {
 
+	private static $db = array(
+		'EventsPerPage' => 'Int'
+	);
+
 	private static $has_many = array(
 		'Events' => 'Event'
 	);
@@ -20,7 +24,10 @@ class EventManagerPage extends Page {
 
 		$eventsField = new GridField('Events', 'Events', $this->Events(), $config);
 
-		$fields->addFieldToTab('Root.Events', $eventsField); 
+		$eventsPerPageField = new NumericField('EventsPerPage', 'Events per page');
+
+		$fields->addFieldToTab('Root.Events', $eventsPerPageField);
+		$fields->addFieldToTab('Root.Events', $eventsField);
 
 		return $fields;
 	}
