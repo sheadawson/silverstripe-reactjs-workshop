@@ -437,7 +437,7 @@ if (!nodeVersionIsValid) {
 }
 
 gulp.task('js:watch', function () {
-    gulp.watch('./src', ['js']);
+    gulp.watch('./src/*.js', ['js']);
 });
 
 gulp.task('js', function () {
